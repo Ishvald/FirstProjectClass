@@ -11,6 +11,9 @@ TEMPERATURE_REGISTER = 1
 NIVEAU_REGISTER_CUVE1 = 2
 NIVEAU_REGISTER_CUVE2 = 3
 NIVEAU_REGISTER_CUVE3 = 4
+VANNE_VILLE_REGISTER = 10  # adresse de la vanne de ville
+vanne_autoregulation = 0  # 0 = fermée, 1 = ouverte
+pompe1 = 0  # 0 = éteinte, 1 = allumée
 
 """"création de la pression et de l'ajustation"""
 
@@ -18,12 +21,24 @@ def pressure_simulation(context, slave_id=0x00):
     """Il y a une dimminution de préssion toutes les secondes. et il faut envoyer une information à "pompe1" pour la mettre à 1"""
     pressure = 1000  # Pression initiale (ex: 100.0 kPa, multipliée par 10)
     while True:
+        # Lire l'état de la vanne
+        vanne_ville = context[slave_id].getValues(3, VANNE_VILLE_REGISTER, count=1)[0]
+        if vanne_ville == 1:
+            # Si la vanne est ouverte, la pression chute plus vite
+            pressure -= 10
         # Variation aléatoire de la pression
         pressure -= random.randint(1, 5)
         if pressure < 800:
             pompe1 = 1  # Activer la pompe
         if pressure > 1200:
-            vanne1 = 1  # Ouvrir la vanne
+            vanne_autoregulation = 1  # Ouvrir la vanne
+
+        """si pompe allumer alors augmentation de la pression"""
+        if pompe1 == 1:
+            pressure += 5        
+        """si vanne autoregulation ouverte alors diminution de la pression"""
+        if vanne_autoregulation == 1:
+            pressure -= 5
         # Mise à jour du registre
         context[slave_id].setValues(3, PRESSURE_REGISTER, [pressure])
         time.sleep(1)
