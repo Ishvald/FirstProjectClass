@@ -12,8 +12,8 @@ NIVEAU_REGISTER_CUVE1 = 2
 NIVEAU_REGISTER_CUVE2 = 3
 NIVEAU_REGISTER_CUVE3 = 4
 VANNE_VILLE_REGISTER = 10  # adresse de la vanne de ville
-vanne_autoregulation = 0  # 0 = fermée, 1 = ouverte
-pompe1 = 0  # 0 = éteinte, 1 = allumée
+VANNE_AUTOREGULATION = 11  # 0 = fermée, 1 = ouverte
+POMPE_AUTOREGULATION = 12  # 0 = éteinte, 1 = allumée
 
 """"création de la pression et de l'ajustation"""
 
@@ -26,17 +26,27 @@ def pressure_simulation(context, slave_id=0x00):
         if vanne_ville == 1:
             # Si la vanne est ouverte, la pression chute plus vite
             pressure -= 10
-        # Variation aléatoire de la pression
-        pressure -= random.randint(1, 5)
+        
         if pressure < 800:
-            pompe1 = 1  # Activer la pompe
-        if pressure > 1200:
-            vanne_autoregulation = 1  # Ouvrir la vanne
+            """ecrire dans le registre à l'adresse 12 la valeur 1 pour activer la pompe"""
+            context[slave_id].setValues(3, POMPE_AUTOREGULATION, [1])
 
-        """si pompe allumer alors augmentation de la pression"""
-        if pompe1 == 1:
-            pressure += 5        
-        """si vanne autoregulation ouverte alors diminution de la pression"""
+        if pressure > 1200:
+            """ecrire dans le registre à l'adresse 11 la valeur 1 pour activer la vanne autoregulation"""
+            context[slave_id].setValues(3, VANNE_AUTOREGULATION, [1])
+        """si pression entre 900 et 1000 alors arret de pompe et fermeture vanne autoregulation"""
+        if pressure >= 900 and pressure <= 1000:
+                context[slave_id].setValues(3, POMPE_AUTOREGULATION, [0])
+                context[slave_id].setValues(3, VANNE_AUTOREGULATION, [0])
+
+
+        """si valeur pompe lue dans le registre à l'adresse 12 est à 1 alors augmentation de la pression"""
+        pompe_autoregulation = context[slave_id].getValues(3, POMPE_AUTOREGULATION, count=1)[0]
+        if pompe_autoregulation == 1:
+            pressure += 5
+
+        """si vanne autoregulation lue dans le registre à l'adresse 11 est à 1 alors diminution de la pression"""
+        vanne_autoregulation = context[slave_id].getValues(3, VANNE_AUTOREGULATION, count=1)[0]
         if vanne_autoregulation == 1:
             pressure -= 5
         # Mise à jour du registre
