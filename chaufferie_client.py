@@ -7,7 +7,7 @@ from pymodbus.client import ModbusTcpClient
 def activer_vanne():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    client.write_register(address=0, value=1)  # 1 = vanne ouverte
+    client.write_register(address=10, value=1)  # 1 = vanne ouverte
     client.close()
     status_label.config(text="Vanne activée !")
 
