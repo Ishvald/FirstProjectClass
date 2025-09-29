@@ -45,15 +45,51 @@ root = tk.Tk()
 root.title("IHM Vanne-Ville")
 root.geometry("1200x1000")  # Largeur x Hauteur
 
-"""création d'un bouton pour activer la vanne"""
-btn = tk.Button(root, text="Activer la vanne", command=activer_vanne)
-btn.pack(pady=10)
-""" et un bouton pour désactiver la vanne"""
-btn_desactiver = tk.Button(root, text="Désactiver la vanne", command=desactiver_vanne)
-btn_desactiver.pack(pady=10)
+"""création d'un bouton qui change de couleur pour activer/désactiver la vanne placer en haut de la fenêtre à gauche"""
+activate_button = tk.Button(root, text="Activer Vanne-Ville", command=activer_vanne, bg="green", fg="white", font=("Arial", 16))
+activate_button.pack(pady=10)
+deactivate_button = tk.Button(root, text="Désactiver Vanne-Ville", command=desactiver_vanne, bg="red", fg="white", font=("Arial", 16))
+deactivate_button.pack(pady=10)
+status_label = tk.Label(root, text="Statut: Inconnu", font=("Arial", 14))
+status_label.pack(pady=10)
 
-status_label = tk.Label(root, text="")
-status_label.pack()
+"""4 boutons pour simuler les saisons si en hiver alors température baisse plus vite, si en été alors température monte plus vite,"""
+season_frame = tk.Frame(root)
+season_frame.pack(pady=10)
+def set_winter():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    client.write_register(address=20, value=1)  # 1 = hiver
+    client.close()
+
+def set_summer():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    client.write_register(address=20, value=2)  # 2 = été
+    client.close()
+
+def set_spring():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    client.write_register(address=20, value=3)  # 3 = printemps
+    client.close()
+
+def set_autumn():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    client.write_register(address=20, value=4)  # 4 = automne
+    client.close()
+
+winter_button = tk.Button(season_frame, text="Hiver", command=set_winter, bg="lightblue", font=("Arial", 12))
+winter_button.grid(row=0, column=0, padx=5) 
+summer_button = tk.Button(season_frame, text="Été", command=set_summer, bg="orange", font=("Arial", 12))
+summer_button.grid(row=0, column=1, padx=5)
+spring_button = tk.Button(season_frame, text="Printemps", command=set_spring, bg="lightgreen", font=("Arial", 12))
+spring_button.grid(row=0, column=2, padx=5)
+autumn_button = tk.Button(season_frame, text="Automne", command=set_autumn, bg="brown", fg="white", font=("Arial", 12))
+autumn_button.grid(row=0, column=3, padx=5)
+
+
 
 """ ihm avancée pour afficher le système dans sa globalité avec 3 cuves, des tuyaux, 
 une pompe autoregulation et une vanne autoregulation, une vanne ville 
@@ -112,13 +148,16 @@ label_level.pack(pady=10)
 # Texte sur le canvas pour afficher les valeurs
 canvas_press_text = canvas.create_text(1050, 50, text="Pression: --.- kPa", font=("Arial", 16), fill="black")
 canvas_temp_text = canvas.create_text(1050, 80, text="Température: --.- °C", font=("Arial", 16), fill="black")
-canvas_level_text = canvas.create_text(1050, 110, text="Niveau Cuve 1: --.- %", font=("Arial", 16), fill="black")
+canvas_level_text = canvas.create_text(120, 420, text="Niveau Cuve 1: --.- %", font=("Arial", 16), fill="black")
+canvas_level_text2 = canvas.create_text(395, 420, text="Niveau Cuve 2: --.- %", font=("Arial", 16), fill="black")
+canvas_level_text3 = canvas.create_text(670, 420, text="Niveau Cuve 3: --.- %", font=("Arial", 16), fill="black")
+
 
 # Met à jour les valeurs toutes les secondes
 def update_values():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    rr = client.read_holding_registers(address=0, count=3)
+    rr = client.read_holding_registers(address=0, count=20)
     if rr.isError():
         label_temp.config(text="Température: --.- °C")
         label_press.config(text="Pression: --.- kPa")
@@ -127,17 +166,28 @@ def update_values():
         canvas.itemconfig(canvas_press_text, text="Pression: --.- kPa")
         canvas.itemconfig(canvas_temp_text, text="Température: --.- °C")
         canvas.itemconfig(canvas_level_text, text="Niveau Cuve 1: --.- %")
+        canvas.itemconfig(canvas_level_text, text="Niveau Cuve 2: --.- %")
+        canvas.itemconfig(canvas_level_text, text="Niveau Cuve 3: --.- %")
     else:
         pression = rr.registers[0] / 10.0
         temperature = rr.registers[1] / 10.0
-        niveau = rr.registers[2] / 10.0
+        niveau_cuve1 = rr.registers[2] / 10.0
+        niveau_cuve2 = rr.registers[3] / 10.0
+        niveau_cuve3 = rr.registers[4] / 10.0
+
         label_press.config(text=f"Pression: {pression:.1f} kPa")
         label_temp.config(text=f"Température: {temperature:.1f} °C")
-        label_level.config(text=f"Niveau: {niveau:.1f} %")
+        label_level.config(text=f"Niveau: {niveau_cuve1:.1f} %")
+        label_level.config(text=f"Niveau: {niveau_cuve2:.1f} %")
+        label_level.config(text=f"Niveau: {niveau_cuve3:.1f} %")   
+
         # Met à jour aussi sur le canvas
         canvas.itemconfig(canvas_press_text, text=f"Pression: {pression:.1f} kPa")
         canvas.itemconfig(canvas_temp_text, text=f"Température: {temperature:.1f} °C")
-        canvas.itemconfig(canvas_level_text, text=f"Niveau Cuve 1: {niveau:.1f} %")
+        canvas.itemconfig(canvas_level_text, text=f"Niveau Cuve 1: {niveau_cuve1:.1f} %")
+        canvas.itemconfig(canvas_level_text2, text=f"Niveau Cuve 2: {niveau_cuve2:.1f} %")
+        canvas.itemconfig(canvas_level_text3, text=f"Niveau Cuve 3: {niveau_cuve3:.1f} %")
+
     client.close()
     root.after(1000, update_values)
 

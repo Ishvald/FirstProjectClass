@@ -58,12 +58,41 @@ def temperature_simulation(context, slave_id=0x00):
     """Simule une variation de température toutes les secondes."""
     temperature = 200  # Température initiale (ex: 20.0°C, multipliée par 10)
     while True:
-        # Variation aléatoire de la température
-        temperature += random.randint(-2, 2)
+        # Variation aléatoire de la température récupération de la saison
+        saison = context[slave_id].getValues(3, 20, count=1)[0]
+        if saison == 1:  # Hiver
+            temperature += random.randint(-5, -2)
+        elif saison == 2:  # Été
+            temperature += random.randint(2, 5)
+        elif saison == 3:  # Printemps
+            temperature += random.randint(-2, 2)
+        elif saison == 4:  # Automne
+            temperature += random.randint(-3, 1)
+        
+
+
+        #si température trop basse alors activation du chauffage
         if temperature < 150:
-            temperature = 150
-        if temperature > 300:
-            temperature = 300
+            context[slave_id].setValues(3, 40, [1])  # Activer le chauffage
+        #si trop chaud alors recyclement de l'eau qui retourne dans les cuves puis réinjecter dans le système
+        if temperature > 250:
+            context[slave_id].setValues(3, 41, [1])  # Activer le recyclage
+            #alors augmentation niveau des cuves et diminution de la pression
+            pressure = context[slave_id].getValues(3, PRESSURE_REGISTER, count=1)[0]
+            pressure -= 10
+            context[slave_id].setValues(3, PRESSURE_REGISTER, [pressure])
+            #augmentation niveau des cuves
+            niveau_cuve1 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE1, count=1)[0]
+            niveau_cuve2 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE2, count=1)[0]
+            niveau_cuve3 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE3, count=1)[0]
+            #on regarde le  niveau des cuves et le plus bas augmente, il faut une uniformisation des niveaux
+            if niveau_cuve1 <= niveau_cuve2 and niveau_cuve1 <= niveau_cuve3:
+                niveau_cuve1 += 5   
+            elif niveau_cuve2 <= niveau_cuve1 and niveau_cuve2 <= niveau_cuve3:
+                niveau_cuve2 += 5
+            elif niveau_cuve3 <= niveau_cuve1 and niveau_cuve3 <= niveau_cuve2:
+                niveau_cuve3 += 5
+
         # Mise à jour du registre
         context[slave_id].setValues(3, TEMPERATURE_REGISTER, [temperature])
         time.sleep(1)
