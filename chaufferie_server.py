@@ -11,6 +11,7 @@ TEMPERATURE_REGISTER = 1
 NIVEAU_REGISTER_CUVE1 = 2
 NIVEAU_REGISTER_CUVE2 = 3
 NIVEAU_REGISTER_CUVE3 = 4
+
 """"création de la pression et de l'ajustation"""
 
 def pressure_simulation(context, slave_id=0x00):
@@ -57,3 +58,20 @@ def niveau_cuve_simulation(context, cuve_register, slave_id=0x00):
         context[slave_id].setValues(3, cuve_register, [niveau])
         time.sleep(1)
 
+
+
+if __name__ == "__main__":
+    # Création du datastore Modbus avec un registre de 10 mots
+    device = ModbusDeviceContext(
+        hr=ModbusSequentialDataBlock(0, [200]*10)  # 20.0°C initial
+    )
+    context = ModbusServerContext(devices=device, single=True)
+
+    # Lancement du thread de simulation de température
+    sim_thread = Thread(target=temperature_simulation, args=(context,))
+    sim_thread.daemon = True
+    sim_thread.start()
+
+    # Démarrage du serveur Modbus TCP sur le port 502
+    print("Serveur Modbus TCP démarré sur le port 502...")
+    StartTcpServer(context, address=("0.0.0.0", 502))
