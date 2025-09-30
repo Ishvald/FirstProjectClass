@@ -59,7 +59,7 @@ season_frame.pack(pady=10)
 def set_winter():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    client.write_register(address=20, value=1)  # 1 = hiver
+    client.write_register(address=20, value=0)  # 0 = hiver
     client.close()
 
 def set_summer():
@@ -71,13 +71,13 @@ def set_summer():
 def set_spring():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    client.write_register(address=20, value=3)  # 3 = printemps
+    client.write_register(address=20, value=1)  # 1 = printemps
     client.close()
 
 def set_autumn():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    client.write_register(address=20, value=4)  # 4 = automne
+    client.write_register(address=20, value=3)  # 3 = automne
     client.close()
 
 winter_button = tk.Button(season_frame, text="Hiver", command=set_winter, bg="lightblue", font=("Arial", 12))
@@ -152,12 +152,17 @@ canvas_level_text = canvas.create_text(120, 420, text="Niveau Cuve 1: --.- %", f
 canvas_level_text2 = canvas.create_text(395, 420, text="Niveau Cuve 2: --.- %", font=("Arial", 16), fill="black")
 canvas_level_text3 = canvas.create_text(670, 420, text="Niveau Cuve 3: --.- %", font=("Arial", 16), fill="black")
 
+"""label qui écrit dans quelle saison on est en rcupérant la valeur dans le registre 20"""
+canvas_saison_text = canvas.create_text(1050, 110, text="Saison: --", font=("Arial", 16), fill="black")
+
+
+
 
 # Met à jour les valeurs toutes les secondes
 def update_values():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    rr = client.read_holding_registers(address=0, count=20)
+    rr = client.read_holding_registers(address=0, count=50)
     if rr.isError():
         label_temp.config(text="Température: --.- °C")
         label_press.config(text="Pression: --.- kPa")
@@ -168,12 +173,28 @@ def update_values():
         canvas.itemconfig(canvas_level_text, text="Niveau Cuve 1: --.- %")
         canvas.itemconfig(canvas_level_text, text="Niveau Cuve 2: --.- %")
         canvas.itemconfig(canvas_level_text, text="Niveau Cuve 3: --.- %")
+        canvas.itemconfig(canvas_saison_text, text="Saison: --")
+
     else:
         pression = rr.registers[0] / 10.0
         temperature = rr.registers[1] / 10.0
         niveau_cuve1 = rr.registers[2] / 10.0
         niveau_cuve2 = rr.registers[3] / 10.0
         niveau_cuve3 = rr.registers[4] / 10.0
+        saison_val = rr.registers[20]
+
+        # Affichage saison
+        if saison_val == 0:
+            saison_txt = "Hiver"
+        elif saison_val == 1:
+            saison_txt = "Printemps"
+        elif saison_val == 2:
+            saison_txt = "Été"
+        elif saison_val == 3:
+            saison_txt = "Automne"
+        else:
+            saison_txt = "--"
+
 
         label_press.config(text=f"Pression: {pression:.1f} kPa")
         label_temp.config(text=f"Température: {temperature:.1f} °C")
@@ -187,6 +208,8 @@ def update_values():
         canvas.itemconfig(canvas_level_text, text=f"Niveau Cuve 1: {niveau_cuve1:.1f} %")
         canvas.itemconfig(canvas_level_text2, text=f"Niveau Cuve 2: {niveau_cuve2:.1f} %")
         canvas.itemconfig(canvas_level_text3, text=f"Niveau Cuve 3: {niveau_cuve3:.1f} %")
+        canvas.itemconfig(canvas_saison_text, text=f"Saison: {saison_txt}")
+
 
     client.close()
     root.after(1000, update_values)

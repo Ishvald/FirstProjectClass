@@ -14,6 +14,7 @@ NIVEAU_REGISTER_CUVE3 = 4
 VANNE_VILLE_REGISTER = 10  # adresse de la vanne de ville
 VANNE_AUTOREGULATION = 11  # 0 = fermée, 1 = ouverte
 POMPE_AUTOREGULATION = 12  # 0 = éteinte, 1 = allumée
+SAISON_VARIATION = 21  # 0 = Hiver, 1 = Printemps, 2 = Été, 3 = Automne
 
 """"création de la pression et de l'ajustation"""
 
@@ -60,15 +61,18 @@ def temperature_simulation(context, slave_id=0x00):
     while True:
         # Variation aléatoire de la température récupération de la saison
         saison = context[slave_id].getValues(3, 20, count=1)[0]
-        if saison == 1:  # Hiver
+        if saison == 0:  # Hiver
             temperature += random.randint(-5, -2)
         elif saison == 2:  # Été
             temperature += random.randint(2, 5)
-        elif saison == 3:  # Printemps
+        elif saison == 1:  # Printemps
             temperature += random.randint(-2, 2)
-        elif saison == 4:  # Automne
+        elif saison == 3:  # Automne
             temperature += random.randint(-3, 1)
-        
+        if temperature < 100:
+            temperature = 100
+        if temperature > 300:
+            temperature = 300
 
 
         #si température trop basse alors activation du chauffage
@@ -112,6 +116,21 @@ def niveau_cuve_simulation(context, cuve_register, slave_id=0x00):
         context[slave_id].setValues(3, cuve_register, [niveau])
         time.sleep(1)
 
+"""création du compteur de saison"""
+def compteur_simulation(context, slave_id=0x00):
+    compteur = 0
+    saison = 0
+    while True:
+        compteur += 1
+        if compteur >= 30: # toutes les 30 secondes, changement de saison
+            saison += 1
+            compteur = 0
+        if saison > 3:
+            saison = 0
+        context[slave_id].setValues(3, 19, [compteur])#affiche valeur du compteur
+        context[slave_id].setValues(3, 20, [saison])
+        time.sleep(1)
+
 
 
 if __name__ == "__main__":
@@ -120,6 +139,12 @@ if __name__ == "__main__":
         hr=ModbusSequentialDataBlock(0, [0]*100) 
     )
     context = ModbusServerContext(devices=device, single=True)
+
+
+    # Lancement du thread de simulation de compteur
+    compteur_thread = Thread(target=compteur_simulation, args=(context,))
+    compteur_thread.daemon = True
+    compteur_thread.start()
 
     # Lancement du thread de simulation de température
     sim_thread = Thread(target=temperature_simulation, args=(context,))
