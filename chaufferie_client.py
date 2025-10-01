@@ -3,6 +3,7 @@
 
 import tkinter as tk
 from pymodbus.client import ModbusTcpClient
+from tkinter import messagebox
 
 def activer_vanne():
     client = ModbusTcpClient('127.0.0.1', port=502)
@@ -53,6 +54,9 @@ deactivate_button.pack(pady=10)
 status_label = tk.Label(root, text="Statut: Inconnu", font=("Arial", 14))
 status_label.pack(pady=10)
 
+
+
+
 """4 boutons pour simuler les saisons si en hiver alors température baisse plus vite, si en été alors température monte plus vite,"""
 season_frame = tk.Frame(root)
 season_frame.pack(pady=10)
@@ -80,6 +84,23 @@ def set_autumn():
     client.write_register(address=20, value=3)  # 3 = automne
     client.close()
 
+"""création d'un pop-up qui s'ouvre si la température des tuyaux est trop basse ou trop haute"""
+def check_temperature_alert():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    rr = client.read_holding_registers(address=0, count=50)
+    if rr.isError():
+        pass
+    else:
+        alerte_temperature = rr.registers[21]
+        if alerte_temperature == 1:
+            messagebox.showwarning("Alerte", "La température des tuyaux est trop basse!")
+        elif alerte_temperature == 2:
+            messagebox.showwarning("Alerte", "La température des tuyaux est trop haute!")
+
+    client.close()
+    root.after(1000, check_temperature_alert)
+
 winter_button = tk.Button(season_frame, text="Hiver", command=set_winter, bg="lightblue", font=("Arial", 12))
 winter_button.grid(row=0, column=0, padx=5) 
 summer_button = tk.Button(season_frame, text="Été", command=set_summer, bg="orange", font=("Arial", 12))
@@ -88,6 +109,8 @@ spring_button = tk.Button(season_frame, text="Printemps", command=set_spring, bg
 spring_button.grid(row=0, column=2, padx=5)
 autumn_button = tk.Button(season_frame, text="Automne", command=set_autumn, bg="brown", fg="white", font=("Arial", 12))
 autumn_button.grid(row=0, column=3, padx=5)
+
+
 
 
 
@@ -154,6 +177,8 @@ canvas_level_text3 = canvas.create_text(670, 420, text="Niveau Cuve 3: --.- %", 
 
 """label qui écrit dans quelle saison on est en rcupérant la valeur dans le registre 20"""
 canvas_saison_text = canvas.create_text(1050, 110, text="Saison: --", font=("Arial", 16), fill="black")
+"""afficher la température des tuyaux"""
+canvas_temp_tuyaux_text = canvas.create_text(1050, 140, text="Température Tuyaux: --.- °C", font=("Arial", 16), fill="black")
 
 
 
@@ -182,6 +207,8 @@ def update_values():
         niveau_cuve2 = rr.registers[3] / 10.0
         niveau_cuve3 = rr.registers[4] / 10.0
         saison_val = rr.registers[20]
+        temperature_tuyaux = rr.registers[21] / 10.0
+        
 
         # Affichage saison
         if saison_val == 0:
@@ -200,7 +227,7 @@ def update_values():
         label_temp.config(text=f"Température: {temperature:.1f} °C")
         label_level.config(text=f"Niveau: {niveau_cuve1:.1f} %")
         label_level.config(text=f"Niveau: {niveau_cuve2:.1f} %")
-        label_level.config(text=f"Niveau: {niveau_cuve3:.1f} %")   
+        label_level.config(text=f"Niveau: {niveau_cuve3:.1f} %")
 
         # Met à jour aussi sur le canvas
         canvas.itemconfig(canvas_press_text, text=f"Pression: {pression:.1f} kPa")
@@ -209,12 +236,20 @@ def update_values():
         canvas.itemconfig(canvas_level_text2, text=f"Niveau Cuve 2: {niveau_cuve2:.1f} %")
         canvas.itemconfig(canvas_level_text3, text=f"Niveau Cuve 3: {niveau_cuve3:.1f} %")
         canvas.itemconfig(canvas_saison_text, text=f"Saison: {saison_txt}")
-
+        canvas.itemconfig(canvas_temp_tuyaux_text, text=f"Température Tuyaux: {temperature_tuyaux:.1f} °C")
 
     client.close()
     root.after(1000, update_values)
 
 
+
+
+
+
+
+
+
+check_temperature_alert()  # Lancer la vérification des alertes
 update_values()  # Lancer la mise à jour des valeurs
 root.mainloop()
 

@@ -14,12 +14,13 @@ NIVEAU_REGISTER_CUVE3 = 4
 VANNE_VILLE_REGISTER = 10  # adresse de la vanne de ville
 VANNE_AUTOREGULATION = 11  # 0 = fermée, 1 = ouverte
 POMPE_AUTOREGULATION = 12  # 0 = éteinte, 1 = allumée
-SAISON_VARIATION = 21  # 0 = Hiver, 1 = Printemps, 2 = Été, 3 = Automne
+SAISON_VARIATION = 20  # 0 = Hiver, 1 = Printemps, 2 = Été, 3 = Automne
+TEMPERATURE_TUYAUX = 21  # Température des tuyaux
 
 """"création de la pression et de l'ajustation"""
 
 def pressure_simulation(context, slave_id=0x00):
-    """Il y a une dimminution de préssion toutes les secondes. et il faut envoyer une information à "pompe1" pour la mettre à 1"""
+    """Il y a une diminution de préssion toutes les secondes. et il faut envoyer une information à "pompe1" pour la mettre à 1"""
     pressure = 1000  # Pression initiale (ex: 100.0 kPa, multipliée par 10)
     while True:
         # Lire l'état de la vanne
@@ -45,6 +46,14 @@ def pressure_simulation(context, slave_id=0x00):
         pompe_autoregulation = context[slave_id].getValues(3, POMPE_AUTOREGULATION, count=1)[0]
         if pompe_autoregulation == 1:
             pressure += 5
+            # Réduire le niveau des cuves
+            niveau_cuve1 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE1, count=1)[0]
+            niveau_cuve2 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE2, count=1)[0]
+            niveau_cuve3 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE3, count=1)[0]
+            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE1, [max(niveau_cuve1 - 5, 100)])
+            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE2, [max(niveau_cuve2 - 5, 100)])
+            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE3, [max(niveau_cuve3 - 5, 100)])
+
 
         """si vanne autoregulation lue dans le registre à l'adresse 11 est à 1 alors diminution de la pression"""
         vanne_autoregulation = context[slave_id].getValues(3, VANNE_AUTOREGULATION, count=1)[0]
@@ -62,17 +71,17 @@ def temperature_simulation(context, slave_id=0x00):
         # Variation aléatoire de la température récupération de la saison
         saison = context[slave_id].getValues(3, 20, count=1)[0]
         if saison == 0:  # Hiver
-            temperature += random.randint(-5, -2)
+            temperature += random.randint(-8, -2)
         elif saison == 2:  # Été
-            temperature += random.randint(2, 5)
+            temperature += random.randint(2, 8)
         elif saison == 1:  # Printemps
-            temperature += random.randint(-2, 2)
+            temperature += random.randint(-2, 7)
         elif saison == 3:  # Automne
-            temperature += random.randint(-3, 1)
-        if temperature < 100:
-            temperature = 100
-        if temperature > 300:
-            temperature = 300
+            temperature += random.randint(-6, 1)
+        if temperature < 30:
+            temperature = 30
+        if temperature > 400:
+            temperature = 400
 
 
         #si température trop basse alors activation du chauffage
@@ -91,11 +100,17 @@ def temperature_simulation(context, slave_id=0x00):
             niveau_cuve3 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE3, count=1)[0]
             #on regarde le  niveau des cuves et le plus bas augmente, il faut une uniformisation des niveaux
             if niveau_cuve1 <= niveau_cuve2 and niveau_cuve1 <= niveau_cuve3:
-                niveau_cuve1 += 5   
+                niveau_cuve1 += 50
+                niveau_cuve2 -= 20
+                niveau_cuve3 -= 30   
             elif niveau_cuve2 <= niveau_cuve1 and niveau_cuve2 <= niveau_cuve3:
-                niveau_cuve2 += 5
+                niveau_cuve2 += 50
+                niveau_cuve1 -= 30
+                niveau_cuve3 -= 20
             elif niveau_cuve3 <= niveau_cuve1 and niveau_cuve3 <= niveau_cuve2:
-                niveau_cuve3 += 5
+                niveau_cuve3 += 50
+                niveau_cuve1 -= 20
+                niveau_cuve2 -= 30
 
         # Mise à jour du registre
         context[slave_id].setValues(3, TEMPERATURE_REGISTER, [temperature])
@@ -119,7 +134,7 @@ def niveau_cuve_simulation(context, cuve_register, slave_id=0x00):
 """création du compteur de saison"""
 def compteur_simulation(context, slave_id=0x00):
     compteur = 0
-    saison = 0
+    saison = context[slave_id].getValues(3, 20, count=1)[0]  # récupère la valeur du registre 20
     while True:
         compteur += 1
         if compteur >= 30: # toutes les 30 secondes, changement de saison
@@ -130,6 +145,26 @@ def compteur_simulation(context, slave_id=0x00):
         context[slave_id].setValues(3, 19, [compteur])#affiche valeur du compteur
         context[slave_id].setValues(3, 20, [saison])
         time.sleep(1)
+
+"""Différencier température externe et interne, il faut stabiliser la température dans les tuyaux à 60°C"""
+def temperature_tuyaux(context, slave_id=0x00):
+    """Simule une variation de température toutes les secondes."""
+    alerte_temperature = 0
+    temperature_tuyaux = 600  # Température initiale (ex: 60.0°C, multipliée par 10)
+    while True:
+        # Variation aléatoire de la température
+        temperature_tuyaux += random.randint(-3, 3)
+        if temperature_tuyaux < 500:
+            alerte_temperature = 1
+        if temperature_tuyaux > 700:
+            alerte_temperature = 2
+        else:
+            alerte_temperature = 0
+        # Mise à jour du registre
+        context[slave_id].setValues(3, TEMPERATURE_TUYAUX, [temperature_tuyaux])
+        time.sleep(1)
+
+
 
 
 
