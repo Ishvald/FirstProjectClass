@@ -19,6 +19,19 @@ def desactiver_vanne():
     client.close()
     status_label.config(text="Vanne désactivée !")
 
+def activer_chauffage():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    client.write_register(address=5, value=1)  # 1 = chauffage activé
+    client.close()
+    status_label.config(text="Chauffage activé !")
+
+def desactiver_chauffage():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    client.write_register(address=5, value=0)  # 0 = chauffage désactivé
+    client.close()
+    status_label.config(text="Chauffage désactivé !")
 
 def update_values():
     client = ModbusTcpClient('127.0.0.1', port=502)
@@ -54,8 +67,11 @@ deactivate_button.pack(pady=10)
 status_label = tk.Label(root, text="Statut: Inconnu", font=("Arial", 14))
 status_label.pack(pady=10)
 
-
-
+""""bouton activer le chauffage et désactiver le chauffage"""
+activate_heating_button = tk.Button(root, text="Activer Chauffage", command=activer_chauffage, bg="orange", fg="white", font=("Arial", 16))
+activate_heating_button.pack(pady=10)
+deactivate_heating_button = tk.Button(root, text="Désactiver Chauffage", command=desactiver_chauffage, bg="red", fg="white", font=("Arial", 16))
+deactivate_heating_button.pack(pady=10)
 
 """4 boutons pour simuler les saisons si en hiver alors température baisse plus vite, si en été alors température monte plus vite,"""
 season_frame = tk.Frame(root)
@@ -92,7 +108,7 @@ def check_temperature_alert():
     if rr.isError():
         pass
     else:
-        alerte_temperature = rr.registers[21]
+        alerte_temperature = rr.registers[22]
         if alerte_temperature == 1:
             messagebox.showwarning("Alerte", "La température des tuyaux est trop basse!")
         elif alerte_temperature == 2:

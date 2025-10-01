@@ -16,6 +16,9 @@ VANNE_AUTOREGULATION = 11  # 0 = fermée, 1 = ouverte
 POMPE_AUTOREGULATION = 12  # 0 = éteinte, 1 = allumée
 SAISON_VARIATION = 20  # 0 = Hiver, 1 = Printemps, 2 = Été, 3 = Automne
 TEMPERATURE_TUYAUX = 21  # Température des tuyaux
+CHAUFFAGE = 5  # 0 = éteint, 1 = allumé
+
+
 
 """"création de la pression et de l'ajustation"""
 
@@ -46,19 +49,22 @@ def pressure_simulation(context, slave_id=0x00):
         pompe_autoregulation = context[slave_id].getValues(3, POMPE_AUTOREGULATION, count=1)[0]
         if pompe_autoregulation == 1:
             pressure += 5
-            # Réduire le niveau des cuves
+
+            # Réduire le niveau des cuves de 1% (10 unités)
             niveau_cuve1 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE1, count=1)[0]
             niveau_cuve2 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE2, count=1)[0]
             niveau_cuve3 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE3, count=1)[0]
-            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE1, [max(niveau_cuve1 - 5, 100)])
-            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE2, [max(niveau_cuve2 - 5, 100)])
-            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE3, [max(niveau_cuve3 - 5, 100)])
 
-
+            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE1, [max(niveau_cuve1 - 10, 100)])
+            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE2, [max(niveau_cuve2 - 10, 100)])
+            context[slave_id].setValues(3, NIVEAU_REGISTER_CUVE3, [max(niveau_cuve3 - 10, 100)])
         """si vanne autoregulation lue dans le registre à l'adresse 11 est à 1 alors diminution de la pression"""
         vanne_autoregulation = context[slave_id].getValues(3, VANNE_AUTOREGULATION, count=1)[0]
         if vanne_autoregulation == 1:
             pressure -= 5
+
+        
+        
         # Mise à jour du registre
         context[slave_id].setValues(3, PRESSURE_REGISTER, [pressure])
         time.sleep(1)
@@ -85,32 +91,18 @@ def temperature_simulation(context, slave_id=0x00):
 
 
         #si température trop basse alors activation du chauffage
-        if temperature < 150:
-            context[slave_id].setValues(3, 40, [1])  # Activer le chauffage
-        #si trop chaud alors recyclement de l'eau qui retourne dans les cuves puis réinjecter dans le système
-        if temperature > 250:
-            context[slave_id].setValues(3, 41, [1])  # Activer le recyclage
-            #alors augmentation niveau des cuves et diminution de la pression
-            pressure = context[slave_id].getValues(3, PRESSURE_REGISTER, count=1)[0]
-            pressure -= 10
-            context[slave_id].setValues(3, PRESSURE_REGISTER, [pressure])
-            #augmentation niveau des cuves
-            niveau_cuve1 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE1, count=1)[0]
-            niveau_cuve2 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE2, count=1)[0]
-            niveau_cuve3 = context[slave_id].getValues(3, NIVEAU_REGISTER_CUVE3, count=1)[0]
-            #on regarde le  niveau des cuves et le plus bas augmente, il faut une uniformisation des niveaux
-            if niveau_cuve1 <= niveau_cuve2 and niveau_cuve1 <= niveau_cuve3:
-                niveau_cuve1 += 50
-                niveau_cuve2 -= 20
-                niveau_cuve3 -= 30   
-            elif niveau_cuve2 <= niveau_cuve1 and niveau_cuve2 <= niveau_cuve3:
-                niveau_cuve2 += 50
-                niveau_cuve1 -= 30
-                niveau_cuve3 -= 20
-            elif niveau_cuve3 <= niveau_cuve1 and niveau_cuve3 <= niveau_cuve2:
-                niveau_cuve3 += 50
-                niveau_cuve1 -= 20
-                niveau_cuve2 -= 30
+        if temperature < 450:
+            context[slave_id].setValues(3, CHAUFFAGE, [1])  # Activer le chauffage
+
+
+        chauffage = context[slave_id].getValues(3, CHAUFFAGE, count=1)[0]
+        if chauffage == 1:
+            while temperature < 200:
+                temperature += 5
+                time.sleep(1)
+            context[slave_id].setValues(3, CHAUFFAGE, [0])  # Désactiver le chauffage une fois la température atteinte
+    
+
 
         # Mise à jour du registre
         context[slave_id].setValues(3, TEMPERATURE_REGISTER, [temperature])
@@ -121,8 +113,7 @@ def niveau_cuve_simulation(context, cuve_register, slave_id=0x00):
     """Simule la variation du niveau d'une cuve."""
     niveau = 500  # Niveau initial (ex: 50.0%, multiplié par 10)
     while True:
-        # Variation aléatoire du niveau
-        niveau += random.randint(-5, 5)
+
         if niveau < 100:
             niveau = 100
         if niveau > 900:
@@ -153,17 +144,39 @@ def temperature_tuyaux(context, slave_id=0x00):
     temperature_tuyaux = 600  # Température initiale (ex: 60.0°C, multipliée par 10)
     while True:
         # Variation aléatoire de la température
-        temperature_tuyaux += random.randint(-3, 3)
         if temperature_tuyaux < 500:
             alerte_temperature = 1
         if temperature_tuyaux > 700:
             alerte_temperature = 2
         else:
             alerte_temperature = 0
+
+        pompe_autoregulation = context[slave_id].getValues(3, POMPE_AUTOREGULATION, count=1)[0]
+        temperature = context[slave_id].getValues(3, TEMPERATURE_REGISTER, count=1)[0]
+        if pompe_autoregulation == 1:
+
+            # Pompe active -> refroidissement continu : -10 unités ( = -1.0°C si échelle x10) par tick
+            temperature_tuyaux = max(temperature_tuyaux - 10, 0)
+            
+        if temperature_tuyaux < temperature:
+            temperature_tuyaux = temperature
+
+        # Lire l'état du chauffage
+        chauffage = context[slave_id].getValues(3, CHAUFFAGE, count=1)[0]
+
+        # Ajustement de la température
+        if chauffage == 1 and temperature_tuyaux < 600:
+            temperature_tuyaux += 5  # Chauffage actif -> monte progressivement
+        elif chauffage == 0 and temperature_tuyaux > 600:
+            temperature_tuyaux -= 1  # Refroidissement naturel
+            
         # Mise à jour du registre
         context[slave_id].setValues(3, TEMPERATURE_TUYAUX, [temperature_tuyaux])
+        context[slave_id].setValues(3, 22, [alerte_temperature])  # registre d'alerte
         time.sleep(1)
 
+
+"""activation du chaffage du registre 5 alors augmentation de la temperature_tuyaux de 5 toutes les secondes"""
 
 
 
@@ -174,7 +187,12 @@ if __name__ == "__main__":
         hr=ModbusSequentialDataBlock(0, [0]*100) 
     )
     context = ModbusServerContext(devices=device, single=True)
+    context[0].setValues(3, TEMPERATURE_TUYAUX, [600])  # 60°C
 
+    # Lancement du thread de simulation de la température des tuyaux
+    tuyaux_thread = Thread(target=temperature_tuyaux, args=(context,))
+    tuyaux_thread.daemon = True
+    tuyaux_thread.start()
 
     # Lancement du thread de simulation de compteur
     compteur_thread = Thread(target=compteur_simulation, args=(context,))
@@ -185,6 +203,8 @@ if __name__ == "__main__":
     sim_thread = Thread(target=temperature_simulation, args=(context,))
     sim_thread.daemon = True
     sim_thread.start()
+
+   
     # Lancement du thread de simulation de pression
     pres_thread = Thread(target=pressure_simulation, args=(context,))
     pres_thread.daemon = True
