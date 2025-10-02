@@ -1,69 +1,154 @@
-Voici une user story complète pour votre projet de système de gestion d'eau avec simulation Modbus :
+# Système de Gestion d'Aqueduc Modbus
 
-## User Story : Gestion du Système Hydraulique Intelligent
+## 🏗️ Architecture Globale du Système
 
-**En tant qu'** opérateur du système hydraulique  
-**Je veux** pouvoir surveiller et contrôler l'ensemble du système via une interface graphique  
-**Afin de** maintenir un fonctionnement optimal et réagir rapidement aux anomalies
+Ce projet simule un **système complet de distribution d'eau** avec régulation automatique et supervision humaine. L'architecture repose sur trois composants interconnectés qui communiquent via le protocole Modbus TCP :
+
+```
+┌─────────────────┐    Modbus TCP    ┌──────────────────┐
+│   Interface     │ ←──────────────→ │    Serveur de    │
+│    Client       │     Port 502     │   Simulation     │
+│   (Contrôle)    │ ←──────────────→ │   (Données)      │
+└─────────────────┘                  └──────────────────┘
+         ↑                                    ↑
+         │                                    │
+         └───────────┐              ┌─────────┘
+                     │    Lecture   │
+               ┌─────────────┐      │
+               │  Système    │ ─────┘
+               │ d'Alarmes   │
+               │ (Surveillance)│
+               └─────────────┘
+```
+
+## 🎯 Scénarios d'Utilisation
+
+### 🔄 Scénario 1: Régulation Automatique de Pression
+
+**Situation Initiale:**
+- Pression normale (100.0 kPa)
+- Vanne ville fermée
+- Pompe éteinte
+
+**Déroulement:**
+1. L'utilisateur ouvre la vanne ville via l'IHM
+2. La pression commence à baisser progressivement
+3. Quand la pression passe sous 80.0 kPa, le système active automatiquement la pompe
+4. La pompe remonte la pression jusqu'à 90.0-100.0 kPa
+5. Une fois la pression stabilisée, la pompe s'éteint automatiquement
+
+**Résultat:** Maintien automatique de la pression dans la plage optimale.
+
+### 🌡️ Scénario 2: Gestion des Saisons et Température
+
+**Cycle Automatique:**
+- **Hiver (0):** Température baisse rapidement (-0.8°C à -0.2°C/seconde)
+- **Printemps (1):** Variations modérées (-0.2°C à +0.7°C/seconde)  
+- **Été (2):** Température monte rapidement (+0.2°C à +0.8°C/seconde)
+- **Automne (3):** Refroidissement progressif (-0.6°C à +0.1°C/seconde)
+
+**Intervention Manuel:**
+- L'opérateur peut forcer une saison via les boutons dédiés
+- Le compteur de saison se réinitialise
+- La simulation adapte immédiatement le comportement thermique
+
+### 🚨 Scénario 3: Alerte Température Critique
+
+**Conditions de Déclenchement:**
+- **Alarme BASSE:** Température tuyaux < 50°C → Fenêtre bleue
+- **Alarme HAUTE:** Température tuyaux > 70°C → Fenêtre rouge
+
+**Séquence d'Alarme:**
+1. Le système d'alarme détecte le dépassement de seuil
+2. Une fenêtre d'alerte colorée s'affiche immédiatement
+3. Le message indique la température actuelle et le seuil dépassé
+4. L'alerte persiste jusqu'à intervention manuelle
+5. Si la température revient à la normale, l'affichage devient vert mais reste visible
+
+### 💧 Scénario 4: Gestion des Niveaux de Cuves
+
+**Remplissage Manuel:**
+- Les cuves se vident progressivement quand la pompe fonctionne
+- L'opérateur peut cliquer sur "Remplir Cuves" pour les remettre à 50%
+- Action immédiate via coil Modbus (adresse 1)
+
+**Consommation Automatique:**
+- Chaque activation de la pompe réduit tous les niveaux de 10%
+- Sécurité: niveaux ne descendent jamais en dessous de 10%
+
+### 🔥 Scénario 5: Chauffage Manuel des Tuyaux
+
+**Problème:** Température des tuyaux trop basse en hiver
+**Solution:**
+1. L'opérateur active le chauffage manuel via l'IHM
+2. La température des tuyaux augmente de +0.5°C/seconde
+3. Arrêt manuel nécessaire pour éviter la surchauffe
+
+## 🔄 Boucles de Régulation
+
+### Boucle de Pression
+```
+Vanne Ville Ouverte → Pression baisse → Pompe s'allume → Pression monte → Pompe s'éteint
+```
+
+### Boucle de Température Saisonnière
+```
+Saison → Variation température → Adaptation comportement système → Changement saison automatique
+```
+
+### Boucle de Refroidissement Tuyaux
+```
+Pompe Active → Eau circule → Température tuyaux baisse → Équilibre avec température ambiante
+```
+
+## 🎮 Tableau de Contrôle Opérateur
+
+| Élément | Type | Action | Effet |
+|---------|------|--------|-------|
+| **Vanne Ville** | Interrupteur | Ouverture/Fermeture | Contrôle débit entrée |
+| **Chauffage** | Interrupteur | Activation/Désactivation | Chauffe tuyaux |
+| **Saisons** | Sélection | Choix manuel | Force conditions météo |
+| **Remplissage** | Bouton momentané | Appui unique | Remet cuves à 50% |
+
+## 📊 Métriques de Surveillance
+
+| Paramètre | Plage Normale | Seuil Alarme | Unité |
+|-----------|---------------|--------------|-------|
+| Pression | 90.0 - 100.0 | < 80.0 | kPa |
+| Température ambiante | 3.0 - 40.0 | Aucune | °C |
+| Température tuyaux | 50.0 - 70.0 | < 50.0 ou > 70.0 | °C |
+| Niveau cuves | 10.0 - 100.0 | < 10.0 | % |
+
+## 🔧 Procédures Opérationnelles
+
+### Démarrage du Système
+1. ✅ Lancer `server.py` - Initialise la simulation
+2. ✅ Lancer `alarmes.py` - Active la surveillance
+3. ✅ Lancer `client.py` - Ouvre le poste de contrôle
+
+### Arrêt d'Urgence
+- Fermer la vanne ville
+- Couper le chauffage
+- Arrêter les programmes dans l'ordre inverse
+
+### Maintenance Préventive
+- Vérifier régulièrement les niveaux des cuves
+- Surveiller l'évolution saisonnière
+- Tester régulièrement le système d'alarme
+
+## 🎯 Scénario Complet Type
+
+**Contexte:** Début d'hiver, nuit froide
+1. **06:00** - Système détecte température tuyaux à 45°C
+2. **06:00** - Alarme BASSE déclenchée (fenêtre bleue)
+3. **06:02** - Opérateur active le chauffage manuel
+4. **06:15** - Température remonte à 55°C, alarme passe en vert
+5. **06:30** - Pression baisse à 75 kPa, pompe s'allume automatiquement
+6. **06:32** - Niveaux cuves descendent à 40%
+7. **06:35** - Opérateur remplit les cuves manuellement
+8. **06:45** - Système passe automatiquement en saison Hiver
+9. **07:00** - Température stabilisée, pression normale
 
 ---
 
-### **Critères d'acceptation :**
-
-#### 📊 **Surveillance en temps réel**
-- ✅ Les valeurs de pression, température et niveaux des cuves doivent s'actualiser automatiquement toutes les secondes
-- ✅ La saison active doit être affichée et modifiable
-- ✅ La température des tuyaux doit être surveillée avec alertes visuelles
-
-#### 🎛️ **Contrôles manuels**
-- ✅ Pouvoir activer/désactiver la vanne ville via des boutons dédiés
-- ✅ Pouvoir contrôler manuellement le chauffage du système
-- ✅ Pouvoir forcer le remplissage des cuves à 50%
-- ✅ Pouvoir sélectionner manuellement la saison de simulation
-
-#### ⚠️ **Gestion des alertes**
-- ✅ Une pop-up doit avertir si la température des tuyaux est trop basse (<50°C) ou trop haute (>70°C)
-- ✅ Le système doit maintenir automatiquement la pression entre 900-1000 kPa via la pompe et vanne d'autorégulation
-
-#### 🔄 **Simulation automatique**
-- ✅ La saison doit changer automatiquement toutes les 30 secondes si non modifiée manuellement
-- ✅ La température doit varier selon la saison active
-- ✅ La pression doit diminuer quand la vanne ville est ouverte
-- ✅ Les niveaux des cuves doivent baisser quand la pompe est active
-
----
-
-### **Scénarios de test :**
-
-**Scénario 1 : Gestion de la pression**
-```
-Quand la pression descend en dessous de 800 kPa
-Alors la pompe d'autorégulation s'active automatiquement
-Et la pression commence à remonter
-```
-
-**Scénario 2 : Alerte température tuyaux**
-```
-Quand la température des tuyaux dépasse 70°C
-Alors une alerte visuelle s'affiche
-Et l'opérateur peut intervenir manuellement
-```
-
-**Scénario 3 : Changement de saison**
-```
-Quand 30 secondes se sont écoulées sans intervention manuelle
-Alors la saison passe automatiquement à la suivante
-Et la variation de température s'ajuste en conséquence
-```
-
----
-
-### **Définition de Fini :**
-- [x] Interface graphique fonctionnelle avec tous les contrôles
-- [x] Communication Modbus TCP établie entre client et serveur
-- [x] Actualisation automatique des valeurs toutes les secondes
-- [x] Système d'alertes opérationnel
-- [x] Contrôles manuels effectifs sur tous les composants
-- [x] Simulation environnementale réaliste
-
-**Valeur métier :** Cette solution permet une supervision centralisée du système hydraulique avec un équilibre entre automatisation et contrôle manuel, réduisant les risques de dysfonctionnement et améliorant l'efficacité opérationnelle.
+Ce système reproduit fidèlement les défis opérationnels d'un réseau de distribution d'eau, avec ses boucles de régulation automatique et la nécessité d'une supervision humaine pour les situations exceptionnelles.
