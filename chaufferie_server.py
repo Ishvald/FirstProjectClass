@@ -103,11 +103,10 @@ def niveau_cuve_simulation(context, cuve_register, slave_id=0x00):
     """Simule la variation du niveau d'une cuve."""
     niveau = 500  # Niveau initial (ex: 50.0%, multiplié par 10)
     while True:
+        pompe_autoregul = context[slave_id].getValues(3, POMPE_AUTOREGULATION, count=1)[0]
+        if pompe_autoregul == 1:
+            niveau -= 10  # La pompe consomme de l'eau
 
-        if niveau < 100:
-            niveau = 100
-        if niveau > 900:
-            niveau = 900
         # Mise à jour du registre correspondant à la cuve
         context[slave_id].setValues(3, cuve_register, [niveau])
         time.sleep(1)
