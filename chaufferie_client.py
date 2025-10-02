@@ -100,23 +100,6 @@ def set_autumn():
     client.write_register(address=20, value=3)  # 3 = automne
     client.close()
 
-"""création d'un pop-up qui s'ouvre si la température des tuyaux est trop basse ou trop haute"""
-def check_temperature_alert():
-    client = ModbusTcpClient('127.0.0.1', port=502)
-    client.connect()
-    rr = client.read_holding_registers(address=0, count=50)
-    if rr.isError():
-        pass
-    else:
-        alerte_temperature = rr.registers[22]
-        if alerte_temperature == 1:
-            messagebox.showwarning("Alerte", "La température des tuyaux est trop basse!")
-        elif alerte_temperature == 2:
-            messagebox.showwarning("Alerte", "La température des tuyaux est trop haute!")
-
-    client.close()
-    root.after(1000, check_temperature_alert)
-
 winter_button = tk.Button(season_frame, text="Hiver", command=set_winter, bg="lightblue", font=("Arial", 12))
 winter_button.grid(row=0, column=0, padx=5) 
 summer_button = tk.Button(season_frame, text="Été", command=set_summer, bg="orange", font=("Arial", 12))
@@ -272,11 +255,6 @@ def update_values():
 
 
 
-
-
-
-
-check_temperature_alert()  # Lancer la vérification des alertes
 update_values()  # Lancer la mise à jour des valeurs
 root.mainloop()
 
