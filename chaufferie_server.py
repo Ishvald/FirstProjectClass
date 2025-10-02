@@ -3,7 +3,7 @@ import time
 from pymodbus.server import StartTcpServer
 from pymodbus.datastore import ModbusDeviceContext, ModbusServerContext
 from pymodbus.datastore import ModbusSequentialDataBlock
-from threading import Thread
+from threading import Thread, Lock
 
 # Adresse du registre où la pression sera stockée
 PRESSURE_REGISTER = 0
@@ -15,9 +15,13 @@ VANNE_VILLE_REGISTER = 10  # adresse de la vanne de ville
 VANNE_AUTOREGULATION = 11  # 0 = fermée, 1 = ouverte
 POMPE_AUTOREGULATION = 12  # 0 = éteinte, 1 = allumée
 SAISON_VARIATION = 20  # 0 = Hiver, 1 = Printemps, 2 = Été, 3 = Automne
+COMPTEUR_SAISON = 19  # Compteur pour le changement automatique de saison
 TEMPERATURE_TUYAUX = 21  # Température des tuyaux
 CHAUFFAGE = 5  # 0 = éteint, 1 = allumé
 CHAUFFAGE_MANUEL = 6  # 0 = éteint, 1 = allumé
+
+# Verrou pour synchroniser l'accès aux saisons
+saison_lock = Lock()
 
 def pressure_simulation(context, slave_id=0x00):
     """Il y a une diminution de préssion toutes les secondes. et il faut envoyer une information à "pompe1" pour la mettre à 1"""
@@ -61,7 +65,9 @@ def temperature_simulation(context, slave_id=0x00):
     temperature = 200  # Température initiale (ex: 20.0°C, multipliée par 10)
     while True:
         # Variation aléatoire de la température récupération de la saison
-        saison = context[slave_id].getValues(3, 20, count=1)[0]
+        with saison_lock:
+            saison = context[slave_id].getValues(3, SAISON_VARIATION, count=1)[0]
+        
         if saison == 0:  # Hiver
             temperature += random.randint(-8, -2)
         elif saison == 2:  # Été
@@ -105,18 +111,34 @@ def gestion_cuves(context, slave_id=0x00):
 
         time.sleep(1)
 
-def compteur_simulation(context, slave_id=0x00):
+def gestion_saisons(context, slave_id=0x00):
+    """Gère les saisons dans un seul thread - version corrigée"""
     compteur = 0
-    saison = context[slave_id].getValues(3, 20, count=1)[0]  # récupère la valeur du registre 20
+    saison_actuelle = 0  # Saison actuelle
+    
     while True:
+        # Lire la valeur actuelle du registre 20 (peut avoir été modifiée par l'IHM)
+        saison_manuelle = context[slave_id].getValues(3, SAISON_VARIATION, count=1)[0]
+        
+        # Si la saison manuelle est différente de la saison actuelle, c'est que l'IHM a changé la saison
+        if saison_manuelle != saison_actuelle and saison_manuelle in [0, 1, 2, 3]:
+            with saison_lock:
+                saison_actuelle = saison_manuelle
+            compteur = 0  # Réinitialiser le compteur
+            print(f"Saison changée manuellement: {saison_actuelle}")
+        
+        # Changement automatique toutes les 30 secondes
         compteur += 1
-        if compteur >= 30: # toutes les 30 secondes, changement de saison
-            saison += 1
+        if compteur >= 30:  # Toutes les 30 secondes
+            with saison_lock:
+                saison_actuelle = (saison_actuelle + 1) % 4
+                context[slave_id].setValues(3, SAISON_VARIATION, [saison_actuelle])
             compteur = 0
-        if saison > 3:
-            saison = 0
-        context[slave_id].setValues(3, 19, [compteur])#affiche valeur du compteur
-        context[slave_id].setValues(3, 20, [saison])
+            print(f"Saison changée automatiquement: {saison_actuelle}")
+        
+        # Mettre à jour le compteur (affichage seulement)
+        context[slave_id].setValues(3, COMPTEUR_SAISON, [compteur])
+        
         time.sleep(1)
 
 def temperature_tuyaux(context, slave_id=0x00):
@@ -163,16 +185,17 @@ if __name__ == "__main__":
     context[0].setValues(3, NIVEAU_REGISTER_CUVE1, [500])  # Cuve 1 à 50%
     context[0].setValues(3, NIVEAU_REGISTER_CUVE2, [500])  # Cuve 2 à 50%
     context[0].setValues(3, NIVEAU_REGISTER_CUVE3, [500])  # Cuve 3 à 50%
+    context[0].setValues(3, SAISON_VARIATION, [0])  # Saison initiale : Hiver
     
     # Lancement du thread de simulation de la température des tuyaux
     tuyaux_thread = Thread(target=temperature_tuyaux, args=(context,))
     tuyaux_thread.daemon = True
     tuyaux_thread.start()
 
-    # Lancement du thread de simulation de compteur
-    compteur_thread = Thread(target=compteur_simulation, args=(context,))
-    compteur_thread.daemon = True
-    compteur_thread.start()
+    # Lancement du thread de gestion des saisons (remplace compteur_simulation)
+    saison_thread = Thread(target=gestion_saisons, args=(context,))
+    saison_thread.daemon = True
+    saison_thread.start()
 
     # Lancement du thread de simulation de température
     sim_thread = Thread(target=temperature_simulation, args=(context,))
