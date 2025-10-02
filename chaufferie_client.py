@@ -127,6 +127,17 @@ autumn_button = tk.Button(season_frame, text="Automne", command=set_autumn, bg="
 autumn_button.grid(row=0, column=3, padx=5)
 
 
+"""créer un bouton dans la catégorie coil 1, si appuie sur le bouton alors remettre les cuves à 50%"""
+def remplir_cuves():
+    client = ModbusTcpClient('127.0.0.1', port=502)
+    client.connect()
+    client.write_coil(address=1, value=True)  # Écrire True dans le coil 1
+    client.close()
+
+# Bouton remplir cuves en haut à droite
+remplir_button = tk.Button(root, text="Remplir Cuves", command=remplir_cuves, 
+                           bg="blue", fg="white", font=("Arial", 16))
+remplir_button.place(relx=1.0, x=-20, y=20, anchor="ne")
 
 
 
