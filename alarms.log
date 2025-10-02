@@ -16,3 +16,6 @@
 2025-10-02 15:21:01,056 - ERROR - Erreur générale: ModbusTcpClient.__init__() takes 2 positional arguments but 3 were given
 2025-10-02 15:21:04,057 - ERROR - Erreur générale: ModbusTcpClient.__init__() takes 2 positional arguments but 3 were given
 2025-10-02 15:21:07,059 - ERROR - Erreur générale: ModbusTcpClient.__init__() takes 2 positional arguments but 3 were given
+2025-10-02 15:24:07,338 - ERROR - Erreur générale: ModbusTcpClient.__init__() takes 2 positional arguments but 3 were given
+2025-10-02 15:24:10,339 - ERROR - Erreur générale: ModbusTcpClient.__init__() takes 2 positional arguments but 3 were given
+2025-10-02 15:24:13,340 - ERROR - Erreur générale: ModbusTcpClient.__init__() takes 2 positional arguments but 3 were given
