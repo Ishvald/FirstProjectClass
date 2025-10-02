@@ -136,19 +136,6 @@ Pompe Active → Eau circule → Température tuyaux baisse → Équilibre avec 
 - Surveiller l'évolution saisonnière
 - Tester régulièrement le système d'alarme
 
-## 🎯 Scénario Complet Type
-
-**Contexte:** Début d'hiver, nuit froide
-1. **06:00** - Système détecte température tuyaux à 45°C
-2. **06:00** - Alarme BASSE déclenchée (fenêtre bleue)
-3. **06:02** - Opérateur active le chauffage manuel
-4. **06:15** - Température remonte à 55°C, alarme passe en vert
-5. **06:30** - Pression baisse à 75 kPa, pompe s'allume automatiquement
-6. **06:32** - Niveaux cuves descendent à 40%
-7. **06:35** - Opérateur remplit les cuves manuellement
-8. **06:45** - Système passe automatiquement en saison Hiver
-9. **07:00** - Température stabilisée, pression normale
-
 ---
 
 Ce système reproduit fidèlement les défis opérationnels d'un réseau de distribution d'eau, avec ses boucles de régulation automatique et la nécessité d'une supervision humaine pour les situations exceptionnelles.
