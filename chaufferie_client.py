@@ -22,14 +22,14 @@ def desactiver_vanne():
 def activer_chauffage():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    client.write_register(address=5, value=1)  # 1 = chauffage activé
+    client.write_register(address=6, value=1)  # 1 = chauffage activé
     client.close()
     status_label.config(text="Chauffage activé !")
 
 def desactiver_chauffage():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
-    client.write_register(address=5, value=0)  # 0 = chauffage désactivé
+    client.write_register(address=6, value=0)  # 0 = chauffage désactivé
     client.close()
     status_label.config(text="Chauffage désactivé !")
 

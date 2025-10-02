@@ -17,6 +17,7 @@ POMPE_AUTOREGULATION = 12  # 0 = éteinte, 1 = allumée
 SAISON_VARIATION = 20  # 0 = Hiver, 1 = Printemps, 2 = Été, 3 = Automne
 TEMPERATURE_TUYAUX = 21  # Température des tuyaux
 CHAUFFAGE = 5  # 0 = éteint, 1 = allumé
+CHAUFFAGE_MANUEL = 6  # 0 = éteint, 1 = allumé
 
 
 
@@ -90,19 +91,8 @@ def temperature_simulation(context, slave_id=0x00):
             temperature = 400
 
 
-        #si température trop basse alors activation du chauffage
-        if temperature < 450:
-            context[slave_id].setValues(3, CHAUFFAGE, [1])  # Activer le chauffage
-
-
-        chauffage = context[slave_id].getValues(3, CHAUFFAGE, count=1)[0]
-        if chauffage == 1:
-            while temperature < 200:
-                temperature += 5
-                time.sleep(1)
-            context[slave_id].setValues(3, CHAUFFAGE, [0])  # Désactiver le chauffage une fois la température atteinte
-    
-
+        # quand appuie sur le bouton chauffage manuel, alors augmentation de la température tuyaux
+        
 
         # Mise à jour du registre
         context[slave_id].setValues(3, TEMPERATURE_REGISTER, [temperature])
@@ -161,15 +151,12 @@ def temperature_tuyaux(context, slave_id=0x00):
         if temperature_tuyaux < temperature:
             temperature_tuyaux = temperature
 
-        # Lire l'état du chauffage
-        chauffage = context[slave_id].getValues(3, CHAUFFAGE, count=1)[0]
-
-        # Ajustement de la température
-        if chauffage == 1 and temperature_tuyaux < 600:
-            temperature_tuyaux += 5  # Chauffage actif -> monte progressivement
-        elif chauffage == 0 and temperature_tuyaux > 600:
-            temperature_tuyaux -= 1  # Refroidissement naturel
-            
+        chauffage_manuel = context[slave_id].getValues(3, CHAUFFAGE_MANUEL, count=1)[0]  # Récupérer l'état du chauffage manuel
+        if chauffage_manuel == 1:
+                temperature_tuyaux = context[slave_id].getValues(3, TEMPERATURE_TUYAUX, count=1)[0]
+                temperature_tuyaux += 5
+                context[slave_id].setValues(3, TEMPERATURE_TUYAUX, [temperature_tuyaux])
+    
         # Mise à jour du registre
         context[slave_id].setValues(3, TEMPERATURE_TUYAUX, [temperature_tuyaux])
         context[slave_id].setValues(3, 22, [alerte_temperature])  # registre d'alerte
