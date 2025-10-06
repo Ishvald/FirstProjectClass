@@ -1,5 +1,5 @@
-"""création des boutons pour activer une vanne appeller Vanne-Ville"""
-"""création d'une interface homme machine pour le client"""
+"""Création des boutons pour activer une vanne appelée Vanne-Ville"""
+"""Création d'une interface homme-machine pour le client"""
 
 import tkinter as tk
 from pymodbus.client import ModbusTcpClient
@@ -40,7 +40,7 @@ def update_values():
     rr = client.read_holding_registers(address=0, count=3)
     if rr.isError():
         label_temp.config(text="Température: --.- °C")
-        label_press.config(text="Pression: --.- Pa")
+        label_press.config(text="Pression: --.- kPa")
         label_level.config(text="Niveau: --.- %")
     else:
         pression = rr.registers[0] / 10.0
@@ -52,14 +52,12 @@ def update_values():
     client.close()
     root.after(1000, update_values)  # Relance la fonction toutes les secondes
 
-
-
 # Création de la fenêtre principale
 root = tk.Tk()
 root.title("IHM Vanne-Ville")
 root.geometry("1200x1000")  # Largeur x Hauteur
 
-"""création d'un bouton qui change de couleur pour activer/désactiver la vanne placer en haut de la fenêtre à gauche"""
+"""Création d'un bouton qui change de couleur pour activer/désactiver la vanne placé en haut de la fenêtre à gauche"""
 activate_button = tk.Button(root, text="Activer Vanne-Ville", command=activer_vanne, bg="green", fg="white", font=("Arial", 16))
 activate_button.pack(pady=10)
 deactivate_button = tk.Button(root, text="Désactiver Vanne-Ville", command=desactiver_vanne, bg="red", fg="white", font=("Arial", 16))
@@ -67,15 +65,16 @@ deactivate_button.pack(pady=10)
 status_label = tk.Label(root, text="Statut: Inconnu", font=("Arial", 14))
 status_label.pack(pady=10)
 
-""""bouton activer le chauffage et désactiver le chauffage"""
+"""Bouton activer le chauffage et désactiver le chauffage"""
 activate_heating_button = tk.Button(root, text="Activer Chauffage", command=activer_chauffage, bg="orange", fg="white", font=("Arial", 16))
 activate_heating_button.pack(pady=10)
 deactivate_heating_button = tk.Button(root, text="Désactiver Chauffage", command=desactiver_chauffage, bg="red", fg="white", font=("Arial", 16))
 deactivate_heating_button.pack(pady=10)
 
-"""4 boutons pour simuler les saisons si en hiver alors température baisse plus vite, si en été alors température monte plus vite,"""
+"""4 boutons pour simuler les saisons : si en hiver alors température baisse plus vite, si en été alors température monte plus vite"""
 season_frame = tk.Frame(root)
 season_frame.pack(pady=10)
+
 def set_winter():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
@@ -109,8 +108,7 @@ spring_button.grid(row=0, column=2, padx=5)
 autumn_button = tk.Button(season_frame, text="Automne", command=set_autumn, bg="brown", fg="white", font=("Arial", 12))
 autumn_button.grid(row=0, column=3, padx=5)
 
-
-"""créer un bouton dans la catégorie coil 1, si appuie sur le bouton alors remettre les cuves à 50%"""
+"""Créer un bouton dans la catégorie coil 1, si appui sur le bouton alors remettre les cuves à 50%"""
 def remplir_cuves():
     client = ModbusTcpClient('127.0.0.1', port=502)
     client.connect()
@@ -122,53 +120,53 @@ remplir_button = tk.Button(root, text="Remplir Cuves", command=remplir_cuves,
                            bg="blue", fg="white", font=("Arial", 16))
 remplir_button.place(relx=1.0, x=-20, y=20, anchor="ne")
 
-
-
-""" ihm avancée pour afficher le système dans sa globalité avec 3 cuves, des tuyaux, 
-une pompe autoregulation et une vanne autoregulation, une vanne ville 
+"""IHM avancée pour afficher le système dans sa globalité avec 3 cuves, des tuyaux, 
+une pompe autorégulation et une vanne autorégulation, une vanne ville 
 et des capteurs de température"""
 
-# création des cuves et des tuyaux, cuves tout en bas de la fenêtre des tuyaux qui partent en haut
+# Création des cuves et des tuyaux, cuves tout en bas de la fenêtre des tuyaux qui partent en haut
 canvas = tk.Canvas(root, width=1200, height=1000, bg="lightblue")
 canvas.pack() 
-# création des cuves
+
+# Création des cuves
 canvas.create_rectangle(50, 300, 150, 400, fill="grey")  # Cuve 1
 canvas.create_text(100, 350, text="Cuve 1") 
 canvas.create_rectangle(325, 300, 425, 400, fill="grey")  # Cuve 2
 canvas.create_text(375, 350, text="Cuve 2")
 canvas.create_rectangle(600, 300, 700, 400, fill="grey")  # Cuve 3
 canvas.create_text(650, 350, text="Cuve 3")
-# création des tuyaux
+
+# Création des tuyaux
 canvas.create_rectangle(90, 20, 110, 300, fill="brown")  # Tuyau Cuve 1
 canvas.create_rectangle(365, 20, 385, 300, fill="brown")  # Tuyau Cuve 2
 canvas.create_rectangle(640, 20, 660, 300, fill="brown")  # Tuyau Cuve 3
-#tuyau horizontal en haut pour relier les 3 tuyaux verticaux
+
+# Tuyau horizontal en haut pour relier les 3 tuyaux verticaux
 canvas.create_rectangle(110, 20, 900, 40, fill="brown")  # Tuyau horizontal
-canvas.create_rectangle(890, 20, 910, 300, fill="brown")#tuyau vertical en fin de tuyau horizontal
-#tuyau horizontal bleu pour représenter l'eau qui rerentre dans les cuves a la fin du tuyau vertical
+canvas.create_rectangle(890, 20, 910, 300, fill="brown")  # Tuyau vertical en fin de tuyau horizontal
+
+# Tuyau horizontal bleu pour représenter l'eau qui retourne dans les cuves à la fin du tuyau vertical
 canvas.create_rectangle(110, 280, 890, 300, fill="blue")  # Tuyau horizontal eau
-#trois barre vertes verticales pour représenter un lien entre le bleu et les cuves
-canvas.create_rectangle(110, 280, 125, 310, fill="green")  # lien eau cuve 1
-canvas.create_rectangle(385, 280, 400, 310, fill="green")  # lien eau cuve 2
-canvas.create_rectangle(660, 280, 675, 310, fill="green")  # lien eau cuve 3
 
-# création de la pompe autoregulation placer au milieu du tuyau horizontal
+# Trois barres vertes verticales pour représenter un lien entre le bleu et les cuves
+canvas.create_rectangle(110, 280, 125, 310, fill="green")  # Lien eau cuve 1
+canvas.create_rectangle(385, 280, 400, 310, fill="green")  # Lien eau cuve 2
+canvas.create_rectangle(660, 280, 675, 310, fill="green")  # Lien eau cuve 3
+
+# Création de la pompe autorégulation placée au milieu du tuyau horizontal
 canvas.create_oval(750, 10, 850, 50, fill="red")  # Pompe
-canvas.create_text(800, 30, text="Pompe autoregulation", fill="white")  # Lettre P pour Pompe
+canvas.create_text(800, 30, text="Pompe autorégulation", fill="white")
 
+# Création de la vanne autorégulation sur la ligne bleue
+canvas.create_rectangle(750, 280, 770, 300, fill="orange")  # Vanne autorégulation
+canvas.create_text(760, 290, text="VA", fill="white")  # Lettre VA pour Vanne Autorégulation
 
-# création de la vanne autoregulation sur la ligne bleue
-canvas.create_rectangle(750, 280, 770, 300, fill="orange")  # Vanne autoregulation
-canvas.create_text(760, 290, text="VA", fill="white")  # Lettre VA pour Vanne Autoregulation
-
-#en plein milieu du tuyau vertical le plus a droite, faire un tuyau horizontal vers laa droite
+# En plein milieu du tuyau vertical le plus à droite, faire un tuyau horizontal vers la droite
 canvas.create_rectangle(910, 150, 1100, 170, fill="brown")  # Tuyau horizontal droite
 
-# création de la vanne ville sur le tuyau horizontal a droite
+# Création de la vanne ville sur le tuyau horizontal à droite
 canvas.create_rectangle(1000, 150, 1020, 170, fill="yellow")  # Vanne ville
 canvas.create_text(1010, 160, text="VV", fill="black")  # Lettre VV pour Vanne Ville
-
-
 
 # Labels pour afficher les valeurs
 label_press = tk.Label(root, text="Pression: --.- kPa", font=("Arial", 16))
@@ -185,13 +183,11 @@ canvas_level_text = canvas.create_text(120, 420, text="Niveau Cuve 1: --.- %", f
 canvas_level_text2 = canvas.create_text(395, 420, text="Niveau Cuve 2: --.- %", font=("Arial", 16), fill="black")
 canvas_level_text3 = canvas.create_text(670, 420, text="Niveau Cuve 3: --.- %", font=("Arial", 16), fill="black")
 
-"""label qui écrit dans quelle saison on est en rcupérant la valeur dans le registre 20"""
+"""Label qui écrit dans quelle saison on est en récupérant la valeur dans le registre 20"""
 canvas_saison_text = canvas.create_text(1050, 110, text="Saison: --", font=("Arial", 16), fill="black")
-"""afficher la température des tuyaux"""
+
+"""Afficher la température des tuyaux"""
 canvas_temp_tuyaux_text = canvas.create_text(1050, 140, text="Température Tuyaux: --.- °C", font=("Arial", 16), fill="black")
-
-
-
 
 # Met à jour les valeurs toutes les secondes
 def update_values():
@@ -206,8 +202,8 @@ def update_values():
         canvas.itemconfig(canvas_press_text, text="Pression: --.- kPa")
         canvas.itemconfig(canvas_temp_text, text="Température: --.- °C")
         canvas.itemconfig(canvas_level_text, text="Niveau Cuve 1: --.- %")
-        canvas.itemconfig(canvas_level_text, text="Niveau Cuve 2: --.- %")
-        canvas.itemconfig(canvas_level_text, text="Niveau Cuve 3: --.- %")
+        canvas.itemconfig(canvas_level_text2, text="Niveau Cuve 2: --.- %")
+        canvas.itemconfig(canvas_level_text3, text="Niveau Cuve 3: --.- %")
         canvas.itemconfig(canvas_saison_text, text="Saison: --")
 
     else:
@@ -218,7 +214,6 @@ def update_values():
         niveau_cuve3 = rr.registers[4] / 10.0
         saison_val = rr.registers[20]
         temperature_tuyaux = rr.registers[21] / 10.0
-        
 
         # Affichage saison
         if saison_val == 0:
@@ -232,12 +227,9 @@ def update_values():
         else:
             saison_txt = "--"
 
-
         label_press.config(text=f"Pression: {pression:.1f} kPa")
         label_temp.config(text=f"Température: {temperature:.1f} °C")
         label_level.config(text=f"Niveau: {niveau_cuve1:.1f} %")
-        label_level.config(text=f"Niveau: {niveau_cuve2:.1f} %")
-        label_level.config(text=f"Niveau: {niveau_cuve3:.1f} %")
 
         # Met à jour aussi sur le canvas
         canvas.itemconfig(canvas_press_text, text=f"Pression: {pression:.1f} kPa")
@@ -251,11 +243,5 @@ def update_values():
     client.close()
     root.after(1000, update_values)
 
-
-
-
-
 update_values()  # Lancer la mise à jour des valeurs
 root.mainloop()
-
-

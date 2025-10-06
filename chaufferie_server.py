@@ -5,13 +5,13 @@ from pymodbus.datastore import ModbusDeviceContext, ModbusServerContext
 from pymodbus.datastore import ModbusSequentialDataBlock
 from threading import Thread, Lock
 
-# Adresse du registre où la pression sera stockée
+# Adresses des registres où les données seront stockées
 PRESSURE_REGISTER = 0
 TEMPERATURE_REGISTER = 1
 NIVEAU_REGISTER_CUVE1 = 2
 NIVEAU_REGISTER_CUVE2 = 3
 NIVEAU_REGISTER_CUVE3 = 4
-VANNE_VILLE_REGISTER = 10  # adresse de la vanne de ville
+VANNE_VILLE_REGISTER = 10  # Adresse de la vanne de ville
 VANNE_AUTOREGULATION = 11  # 0 = fermée, 1 = ouverte
 POMPE_AUTOREGULATION = 12  # 0 = éteinte, 1 = allumée
 SAISON_VARIATION = 20  # 0 = Hiver, 1 = Printemps, 2 = Été, 3 = Automne
@@ -24,34 +24,34 @@ CHAUFFAGE_MANUEL = 6  # 0 = éteint, 1 = allumé
 saison_lock = Lock()
 
 def pressure_simulation(context, slave_id=0x00):
-    """Il y a une diminution de préssion toutes les secondes. et il faut envoyer une information à "pompe1" pour la mettre à 1"""
+    """Simule une diminution de pression toutes les secondes et active la pompe si nécessaire"""
     pressure = 1000  # Pression initiale (ex: 100.0 kPa, multipliée par 10)
     while True:
         # Lire l'état de la vanne
         vanne_ville = context[slave_id].getValues(3, VANNE_VILLE_REGISTER, count=1)[0]
         if vanne_ville == 1:
-            # Si la vanne est ouverte, la pression chute plus vite
+            # Si la vanne est ouverte, la pression baisse plus rapidement
             pressure -= 10
         
         if pressure < 800:
-            """ecrire dans le registre à l'adresse 12 la valeur 1 pour activer la pompe"""
+            # Écrire dans le registre à l'adresse 12 la valeur 1 pour activer la pompe
             context[slave_id].setValues(3, POMPE_AUTOREGULATION, [1])
 
         if pressure > 1200:
-            """ecrire dans le registre à l'adresse 11 la valeur 1 pour activer la vanne autoregulation"""
+            # Écrire dans le registre à l'adresse 11 la valeur 1 pour activer la vanne d'autorégulation
             context[slave_id].setValues(3, VANNE_AUTOREGULATION, [1])
         
-        """si pression entre 900 et 1000 alors arret de pompe et fermeture vanne autoregulation"""
+        # Si la pression est entre 900 et 1000, arrêter la pompe et fermer la vanne d'autorégulation
         if pressure >= 900 and pressure <= 1000:
                 context[slave_id].setValues(3, POMPE_AUTOREGULATION, [0])
                 context[slave_id].setValues(3, VANNE_AUTOREGULATION, [0])
 
-        """si valeur pompe lue dans le registre à l'adresse 12 est à 1 alors augmentation de la pression"""
+        # Si la pompe lue dans le registre à l'adresse 12 est à 1, augmenter la pression
         pompe_autoregulation = context[slave_id].getValues(3, POMPE_AUTOREGULATION, count=1)[0]
         if pompe_autoregulation == 1:
             pressure += 5
 
-        """si vanne autoregulation lue dans le registre à l'adresse 11 est à 1 alors diminution de la pression"""
+        # Si la vanne d'autorégulation lue dans le registre à l'adresse 11 est à 1, diminuer la pression
         vanne_autoregulation = context[slave_id].getValues(3, VANNE_AUTOREGULATION, count=1)[0]
         if vanne_autoregulation == 1:
             pressure -= 5
@@ -64,7 +64,7 @@ def temperature_simulation(context, slave_id=0x00):
     """Simule une variation de température toutes les secondes."""
     temperature = 200  # Température initiale (ex: 20.0°C, multipliée par 10)
     while True:
-        # Variation aléatoire de la température récupération de la saison
+        # Variation aléatoire de la température selon la saison
         with saison_lock:
             saison = context[slave_id].getValues(3, SAISON_VARIATION, count=1)[0]
         
@@ -76,6 +76,8 @@ def temperature_simulation(context, slave_id=0x00):
             temperature += random.randint(-2, 7)
         elif saison == 3:  # Automne
             temperature += random.randint(-6, 1)
+        
+        # Limites de sécurité pour la température
         if temperature < 30:
             temperature = 30
         if temperature > 400:
@@ -142,36 +144,38 @@ def gestion_saisons(context, slave_id=0x00):
         time.sleep(1)
 
 def temperature_tuyaux(context, slave_id=0x00):
-    """Simule une variation de température toutes les secondes."""
+    """Simule une variation de température des tuyaux toutes les secondes."""
     alerte_temperature = 0
     temperature_tuyaux = 600  # Température initiale (ex: 60.0°C, multipliée par 10)
     while True:
-        # Variation aléatoire de la température
+        # Déterminer l'état de l'alerte température
         if temperature_tuyaux < 500:
-            alerte_temperature = 1
-        if temperature_tuyaux > 700:
-            alerte_temperature = 2
+            alerte_temperature = 1  # Température trop basse
+        elif temperature_tuyaux > 700:
+            alerte_temperature = 2  # Température trop élevée
         else:
-            alerte_temperature = 0
+            alerte_temperature = 0  # Température normale
 
         pompe_autoregulation = context[slave_id].getValues(3, POMPE_AUTOREGULATION, count=1)[0]
         temperature = context[slave_id].getValues(3, TEMPERATURE_REGISTER, count=1)[0]
+        
         if pompe_autoregulation == 1:
-            # Pompe active -> refroidissement continu : -10 unités ( = -1.0°C si échelle x10) par tick
+            # Pompe active -> refroidissement continu : -10 unités (= -1.0°C si échelle x10) par cycle
             temperature_tuyaux = max(temperature_tuyaux - 10, 0)
             
+        # La température des tuyaux ne peut pas descendre en dessous de la température ambiante
         if temperature_tuyaux < temperature:
             temperature_tuyaux = temperature
 
         chauffage_manuel = context[slave_id].getValues(3, CHAUFFAGE_MANUEL, count=1)[0]  # Récupérer l'état du chauffage manuel
         if chauffage_manuel == 1:
-                temperature_tuyaux = context[slave_id].getValues(3, TEMPERATURE_TUYAUX, count=1)[0]
-                temperature_tuyaux += 5
-                context[slave_id].setValues(3, TEMPERATURE_TUYAUX, [temperature_tuyaux])
+            temperature_tuyaux = context[slave_id].getValues(3, TEMPERATURE_TUYAUX, count=1)[0]
+            temperature_tuyaux += 5
+            context[slave_id].setValues(3, TEMPERATURE_TUYAUX, [temperature_tuyaux])
     
-        # Mise à jour du registre
+        # Mise à jour des registres
         context[slave_id].setValues(3, TEMPERATURE_TUYAUX, [temperature_tuyaux])
-        context[slave_id].setValues(3, 22, [alerte_temperature])  # registre d'alerte
+        context[slave_id].setValues(3, 22, [alerte_temperature])  # Registre d'alerte
         time.sleep(1)
 
 if __name__ == "__main__":
@@ -181,6 +185,8 @@ if __name__ == "__main__":
         co=ModbusSequentialDataBlock(0, [0]*10)  # 10 coils pour les commandes
     )
     context = ModbusServerContext(devices=device, single=True)
+    
+    # Initialisation des valeurs par défaut
     context[0].setValues(3, TEMPERATURE_TUYAUX, [600])  # 60°C
     context[0].setValues(3, NIVEAU_REGISTER_CUVE1, [500])  # Cuve 1 à 50%
     context[0].setValues(3, NIVEAU_REGISTER_CUVE2, [500])  # Cuve 2 à 50%
@@ -192,7 +198,7 @@ if __name__ == "__main__":
     tuyaux_thread.daemon = True
     tuyaux_thread.start()
 
-    # Lancement du thread de gestion des saisons (remplace compteur_simulation)
+    # Lancement du thread de gestion des saisons
     saison_thread = Thread(target=gestion_saisons, args=(context,))
     saison_thread.daemon = True
     saison_thread.start()
@@ -207,7 +213,7 @@ if __name__ == "__main__":
     pres_thread.daemon = True
     pres_thread.start()
     
-    # Lancement d'un SEUL thread pour gérer les trois cuves
+    # Lancement d'un seul thread pour gérer les trois cuves
     cuves_thread = Thread(target=gestion_cuves, args=(context,))
     cuves_thread.daemon = True
     cuves_thread.start()
@@ -215,3 +221,4 @@ if __name__ == "__main__":
     # Démarrage du serveur Modbus TCP sur le port 502
     print("Serveur Modbus TCP démarré sur le port 502...")
     StartTcpServer(context, address=("0.0.0.0", 502))
+    
