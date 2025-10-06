@@ -22,7 +22,7 @@ class AlarmeFonctionnelle:
                 pass
         
         self.fenetre = tk.Toplevel()
-        self.fenetre.title("🚨 ALARME TEMPÉRATURE")
+        self.fenetre.title("ALARME TEMPÉRATURE")
         self.fenetre.geometry("500x200")
         self.fenetre.configure(bg=couleur)
         self.fenetre.attributes('-topmost', True)
@@ -41,7 +41,7 @@ class AlarmeFonctionnelle:
         # Gérer la fermeture
         self.fenetre.protocol("WM_DELETE_WINDOW", self.fermer_alarme)
         
-        print("🚨 Fenêtre d'alarme créée")
+        print("Fenêtre d'alarme créée")
         
         # Démarrer la mise à jour de l'affichage
         self.actualiser_affichage_alarme(couleur)
@@ -50,11 +50,11 @@ class AlarmeFonctionnelle:
         """Actualise l'affichage de l'alarme avec la température actuelle"""
         if self.fenetre and self.label_alarme:
             if self.derniere_temperature > self.seuil_haut:
-                message = f"🚨 TEMPÉRATURE TROP ÉLEVÉE !\n{self.derniere_temperature:.1f}°C > {self.seuil_haut}°C"
+                message = f"TEMPÉRATURE TROP ÉLEVÉE !\n{self.derniere_temperature:.1f}°C > {self.seuil_haut}°C"
             elif self.derniere_temperature < self.seuil_bas:
-                message = f"🚨 TEMPÉRATURE TROP BASSE !\n{self.derniere_temperature:.1f}°C < {self.seuil_bas}°C"
+                message = f"TEMPÉRATURE TROP BASSE !\n{self.derniere_temperature:.1f}°C < {self.seuil_bas}°C"
             else:
-                message = f"✅ TEMPÉRATURE NORMALE\n{self.derniere_temperature:.1f}°C"
+                message = f"TEMPÉRATURE NORMALE\n{self.derniere_temperature:.1f}°C"
                 # Si retour à la normale, on pourrait fermer l'alarme automatiquement
                 # Mais vous voulez qu'elle reste ouverte jusqu'à fermeture manuelle
             
@@ -85,7 +85,7 @@ class AlarmeFonctionnelle:
             self.fenetre.destroy()
             self.fenetre = None
             self.label_alarme = None
-            print("✅ Alarme fermée par l'utilisateur")
+            print("Alarme fermée par l'utilisateur")
     
     def surveiller_temperature(self):
         """Surveille la température et affiche l'alarme si nécessaire"""
@@ -101,7 +101,7 @@ class AlarmeFonctionnelle:
                     temperature = rr.registers[0] / 10.0
                     self.derniere_temperature = temperature
                     
-                    print(f"📊 Température actuelle: {temperature:.1f}°C")
+                    print(f"Température actuelle: {temperature:.1f}°C")
                     
                     # Vérifier les seuils
                     if temperature > self.seuil_haut:
@@ -117,13 +117,13 @@ class AlarmeFonctionnelle:
                     # Si retour à la normale mais fenêtre ouverte, on la laisse ouverte
                     # mais on change l'affichage pour indiquer que c'est revenu à la normale
                     elif self.fenetre is not None and self.seuil_bas <= temperature <= self.seuil_haut:
-                        print("✅ Température revenue à la normale (fenêtre maintenue)")
+                        print("Température revenue à la normale (fenêtre maintenue)")
                         # L'affichage sera actualisé automatiquement
                 
                 client.close()
                 
             except Exception as e:
-                print(f"❌ Erreur connexion: {e}")
+                print(f"Erreur connexion: {e}")
                 time.sleep(5)
             
             time.sleep(2)  # Vérifier toutes les 2 secondes
@@ -135,9 +135,9 @@ class AlarmeFonctionnelle:
         self.root.withdraw()  # Cacher la fenêtre principale
         self.root.title("Alarme Température")
         
-        print("🔍 Surveillance température démarrée...")
-        print(f"📊 Seuils: < {self.seuil_bas}°C | > {self.seuil_haut}°C")
-        print("💤 En attente de dépassement...")
+        print("Surveillance température démarrée...")
+        print(f"Seuils: < {self.seuil_bas}°C | > {self.seuil_haut}°C")
+        print("En attente de dépassement...")
         
         # Démarrer la surveillance dans un thread séparé
         thread = threading.Thread(target=self.surveiller_temperature, daemon=True)
@@ -154,7 +154,7 @@ class AlarmeFonctionnelle:
         self.surveillance_active = False
         if self.root:
             self.root.quit()
-        print("🛑 Surveillance arrêtée")
+        print("Surveillance arrêtée")
 
 if __name__ == "__main__":
     alarme = AlarmeFonctionnelle()
